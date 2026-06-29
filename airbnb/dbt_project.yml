@@ -1,4 +1,3 @@
-
 # Name your project! Project names should contain only lowercase characters
 # and underscores. A good package name should reflect your organization's
 # name or the intended use of these models
@@ -31,15 +30,13 @@ clean-targets:         # directories to be removed by `dbt clean`
 # directory as views. These settings can be overridden in the individual model
 # files using the `{{ config(...) }}` macro.
 on-run-start:
-  - "CREATE TABLE IF NOT EXISTS {{ target.schema}}.audit_log (
-        model_name STRING,
-        run_timestamp TIMESTAMP
-)"
+  - "CREATE SCHEMA IF NOT EXISTS {{ target.schema }}"
+  - "CREATE TABLE IF NOT EXISTS {{ target.schema }}.audit_log ( model_name STRING, run_timestamp TIMESTAMP )"
 
 models:
   airbnb:
     +grants:
-      select: ['transform','reporter']
+      select: ['transform', 'reporter']
     +post-hook:
       - "INSERT INTO {{ target.schema}}.audit_log VALUES ( '{{ this }}', CURRENT_TIMESTAMP)"
     +materialized: view
@@ -56,3 +53,5 @@ data_tests:
 
 vars:
   user_name: default_user_name_for_this_project
+flags:
+  require_generic_test_arguments_property: true
