@@ -1,0 +1,106 @@
+models:
+  - name: dim_listings_cleansed
+    description: Tabela limpa que contem as listas do AirBNB
+    data_tests:
+      - minimum_row_count:
+          arguments:
+            min_row_count: 1000
+    columns:
+      - name: listings_id
+        description: Chave primária da tabela
+        data_tests:
+          - not_null
+          - unique
+      - name: host_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_hosts_cleansed')
+                field: host_id
+      - name: room_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Entire home/apt', 'Private room', 'Shared room', 'Hotel room']
+      - name: minimum_nights
+        description: '{{ doc("dim_listing_cleansed_minimum_nights")}}'
+        data_tests:
+          - positive_values
+  - name: dim_hosts_cleansed
+    versions:
+      - v: 1
+        defined_in: dim_hosts_cleansed
+        deprecation_date: 2026-06-30
+      - v: 2
+        columns:
+          - include: '*'
+            exclude: [host_name]
+          - name: host_name
+            description: Nome do host (N/A caso não disponível)
+            data_type: string
+            data_tests:
+              - not_null
+        defined_in: dim_hosts_cleansed_v2
+    latest_version: 2
+    description: Tabela limpa que contem os hosts do AirBNB
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: host_id
+        description: Identificador da chave primaria
+        data_type: integer
+        data_tests:
+          - unique
+          - not_null
+      - name: host_name
+        description: Nome do host
+        data_type: string
+        data_tests:
+          - not_null
+      - name: is_superhost
+        description: Indica se o host é um superhost
+        data_type: string
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [t, f]
+      - name: updated_at
+        description: Indica a data e hora da última atualização do registro
+        data_type: timestamp
+      - name: created_at
+        description: Indica a data e hora da criação do registro
+        data_type: timestamp
+  - name: fct_reviews
+    columns:
+      - name: listings_id
+        data_tests:
+          - not_null
+      - name: review_date
+        data_tests:
+          - not_null
+      - name: review_sentiment
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['negative', 'neutral', 'positive']
+  - name: dim_listings_w_hosts
+    data_tests:
+      - dbt_expectations.expect_table_row_count_to_equal_other_table:
+          arguments:
+            compare_model: source('airbnb', 'listings')
+    columns:
+      - name: price
+        data_tests:
+          - dbt_expectations.expect_column_quantile_values_to_be_between:
+              arguments:
+                quantile: .99
+                min_value: 50
+                max_value: 500
+          - dbt_expectations.expect_column_max_to_be_between:
+              arguments:
+                max_value: 5000
+                config:
+                  severity: warn
